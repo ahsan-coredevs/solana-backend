@@ -1,7 +1,8 @@
 const express = require('express');
 const { getTransactionSignatures } = require('../controllers/getAccountInfo');
 const { getTransactionDetails, analyzeTransaction } = require('../controllers/buySell');
-const { transactionsDetails, buySell } = require('../controllers/buySellPostPrice');
+const { transactionsDetails, buySell, extractTransactionDetails, getTransactions } = require('../controllers/buySellPostPrice');
+const userTransactions = require('../controllers/userTransactions');
 const router = express.Router();
 
 // Route to fetch transactions by wallet address
@@ -28,11 +29,15 @@ router.get('/transactions/type/:txSignature', async (req, res) => {
     try {
         const { txSignature } = req.params; // Get transaction signature from the route parameter
         const {userWalletAddress} = req.body;
+        const getTransaction = await getTransactions(userWalletAddress);
         const transaction = await getTransactionDetails(txSignature); // Fetch transaction details
+        const newtransactions = await extractTransactionDetails(transaction);
         const result = analyzeTransaction(transaction, userWalletAddress); // Analyze buy/sell transaction
         res.json({
             success: true,
             transaction: result,
+            newTransaction: newtransactions,
+            getTransaction: getTransaction
         });
     } catch (error) {
         console.error('Error analyzing transaction:', error);
@@ -53,6 +58,25 @@ router.get('/transactions/typo/:txSignature', async (req, res) => {
         res.json({
             success: true,
             transaction: result,
+        });
+    } catch (error) {
+        console.error('Error analyzing transaction:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to analyze transaction',
+            error: error.message,
+        });
+    }
+});
+
+router.get('/transactions/user/:walletAddress', async (req, res) => {
+    try {
+        const { walletAddress } = req.params;
+       
+        const transactions = await userTransactions(walletAddress); 
+        res.json({
+            success: true,
+            transactions: transactions,
         });
     } catch (error) {
         console.error('Error analyzing transaction:', error);
